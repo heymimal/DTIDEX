@@ -2,13 +2,283 @@
 <html lang="en">
 
 <head>
-  <meta charset="UTF-8" />
-  <title>Decentralized Finance</title>
+  <meta charset="UTF-8">
+  <title>DEX Marketplace</title>
+  <link href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css" rel="stylesheet">
   <script src="https://cdn.jsdelivr.net/npm/web3@1.9.0/dist/web3.min.js"></script>
+  <style>
+    .custom-divider {
+      border-top: 2px solid #e9ecef;
+      margin: 2rem 0;
+    }
+
+    .switch {
+      position: relative;
+      display: inline-block;
+      width: 60px;
+      height: 34px;
+    }
+
+    .switch input {
+      opacity: 0;
+      width: 0;
+      height: 0;
+    }
+
+    .slider {
+      position: absolute;
+      cursor: pointer;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background-color: #ccc;
+      transition: .4s;
+    }
+
+    .slider:before {
+      position: absolute;
+      content: "";
+      height: 26px;
+      width: 26px;
+      left: 4px;
+      bottom: 4px;
+      background-color: white;
+      transition: .4s;
+    }
+
+    input:checked+.slider {
+      background-color: #2196F3;
+    }
+
+    input:checked+.slider:before {
+      transform: translateX(26px);
+    }
+
+    .slider.round {
+      border-radius: 34px;
+    }
+
+    .slider.round:before {
+      border-radius: 50%;
+    }
+
+    .form-container {
+      max-width: 100%;
+    }
+  </style>
 </head>
 
 <body>
+  <nav class="navbar navbar-expand-lg navbar-light bg-light">
+    <a class="navbar-brand" href="#">DEX Marketplace</a>
+    <button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#navbarNav" aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
+      <span class="navbar-toggler-icon"></span>
+    </button>
+    <div class="collapse navbar-collapse" id="navbarNav">
+      <ul class="navbar-nav ml-auto">
+        <li class="nav-item">
+          <button class="btn btn-primary" onclick="connectMetaMask()">Connect MetaMask</button>
+        </li>
+      </ul>
+    </div>
+  </nav>
+
+  <div class="container mt-5">
+    <!-- Buy DEX Tokens -->
+    <div class="row mb-4">
+      <div class="col-md-6 offset-md-3">
+        <form class="form-container">
+          <div class="form-group">
+            <label for="buyEthAmount">Amount of ETH (in Wei):</label>
+            <input type="number" class="form-control" id="buyEthAmount" placeholder="0 Wei">
+          </div>
+          <button type="button" class="btn btn-success btn-block" onclick="buyDex()">Buy DEX Tokens</button>
+        </form>
+      </div>
+    </div>
+    <div class="custom-divider"></div>
+    <!-- Sell DEX Tokens -->
+    <div class="row mb-4">
+      <div class="col-md-6 offset-md-3">
+        <form class="form-container">
+          <div class="form-group">
+            <label for="sellDexAmount">Amount of DEX Tokens:</label>
+            <input type="number" class="form-control" id="sellDexAmount" placeholder="0 DEX">
+          </div>
+          <button type="button" class="btn btn-warning btn-block" onclick="sellDex()">Sell DEX Tokens</button>
+        </form>
+      </div>
+    </div>
+    <div class="custom-divider"></div>
+
+    <!-- Loan Type Switch -->
+    <div class="row mb-4">
+      <div class="col-md-6 offset-md-3 text-center">
+        <label class="switch">
+          <input type="checkbox" id="loanTypeSwitch" onclick="toggleLoanType()">
+          <span class="slider round"></span>
+        </label>
+        <p id="loanTypeLabel">DEX Tokens</p>
+      </div>
+    </div>
+
+    <!-- DEX Loan Form -->
+    <div class="row mb-4" id="dexLoanForm">
+      <div class="col-md-6 offset-md-3">
+        <form class="form-container">
+          <div class="form-group">
+            <label for="loanDexAmount">Amount of DEX Tokens:</label>
+            <input type="number" class="form-control" id="loanDexAmount" placeholder="0 DEX">
+          </div>
+          <div class="form-group">
+            <label for="loanDeadlineDex">Deadline (in days):</label>
+            <input type="number" class="form-control" id="loanDeadlineDex" placeholder="Enter deadline in days">
+          </div>
+          <button type="button" class="btn btn-info btn-block" onclick="loan()">Request Loan</button>
+        </form>
+      </div>
+    </div>
+
+    <!-- NFT Loan Form -->
+    <div class="row mb-4" id="nftLoanForm" style="display:none;">
+      <div class="col-md-6 offset-md-3">
+        <form class="form-container">
+          <div class="form-group">
+            <label for="nftContractAddress">NFT Contract Address:</label>
+            <input type="text" class="form-control" id="nftContractAddress" placeholder="Enter NFT contract address">
+          </div>
+          <div class="form-group">
+            <label for="nftId">NFT ID:</label>
+            <input type="number" class="form-control" id="nftId" placeholder="Enter NFT ID">
+          </div>
+          <div class="form-group">
+            <label for="loanAmountNft">Loan Amount (ETH):</label>
+            <input type="number" class="form-control" id="loanAmountNft" placeholder="Enter loan amount in ETH">
+          </div>
+          <div class="form-group">
+            <label for="loanDeadlineNft">Deadline (in days):</label>
+            <input type="number" class="form-control" id="loanDeadlineNft" placeholder="Enter deadline in days">
+          </div>
+          <button type="button" class="btn btn-outline-info btn-block" onclick="makeLoanRequestByNft()">Request Loan with NFT</button>
+        </form>
+      </div>
+    </div>
+
+    <div class="custom-divider"></div>
+    <!-- Return Loan -->
+    <div class="row mb-4">
+      <div class="col-md-6 offset-md-3">
+        <form class="form-container">
+          <div class="form-group">
+            <label for="returnLoanId">Loan ID:</label>
+            <input type="number" class="form-control" id="returnLoanId" placeholder="0">
+          </div>
+          <div class="form-group">
+            <label for="returnWeiAmount">Amount (Wei):</label>
+            <input type="number" class="form-control" id="returnWeiAmount" placeholder="0 (Wei)">
+          </div>
+          <button type="button" class="btn btn-secondary btn-block" onclick="returnLoan()">Pay back loan</button>
+        </form>
+      </div>
+    </div>
+    <div class="custom-divider"></div>
+    <!-- Get Balance -->
+    <div class="row mb-4">
+      <div class="col-md-6 offset-md-3">
+        <button class="btn btn-dark btn-block" onclick="getBalance()">Get Contract Balance</button>
+      </div>
+    </div>
+    <div class="custom-divider"></div>
+    <!-- Set DEX Swap Rate -->
+    <div class="row mb-4">
+      <div class="col-md-6 offset-md-3">
+        <form class="form-container">
+          <div class="form-group">
+            <label for="dexSwapRate">New DEX Swap Rate:</label>
+            <input type="number" class="form-control" id="dexSwapRate" placeholder="Enter new swap rate">
+          </div>
+          <button type="button" class="btn btn-outline-primary btn-block" onclick="setDexSwapRate()">Set DEX Swap Rate</button>
+        </form>
+      </div>
+    </div>
+    <div class="custom-divider"></div>
+    <!-- Get DEX Balance -->
+    <div class="row mb-4">
+      <div class="col-md-6 offset-md-3">
+        <button class="btn btn-outline-dark btn-block" onclick="getDexBalance()">Get DEX Balance</button>
+      </div>
+    </div>
+    <div class="custom-divider"></div>
+
+    <!-- Cancel Loan Request by NFT -->
+    <div class="row mb-4">
+      <div class="col-md-6 offset-md-3">
+        <form class="form-container">
+          <div class="form-group">
+            <label for="cancelNftContractAddress">NFT Contract Address:</label>
+            <input type="text" class="form-control" id="cancelNftContractAddress" placeholder="Enter NFT contract address">
+          </div>
+          <div class="form-group">
+            <label for="cancelNftId">NFT ID:</label>
+            <input type="number" class="form-control" id="cancelNftId" placeholder="Enter NFT ID">
+          </div>
+          <button type="button" class="btn btn-outline-danger btn-block" onclick="cancelLoanRequestByNft()">Cancel NFT Loan Request</button>
+        </form>
+      </div>
+    </div>
+    <div class="custom-divider"></div>
+    <!-- Loan by NFT -->
+    <div class="row mb-4">
+      <div class="col-md-6 offset-md-3">
+        <form class="form-container">
+          <div class="form-group">
+            <label for="loanNftContractAddress">NFT Contract Address:</label>
+            <input type="text" class="form-control" id="loanNftContractAddress" placeholder="Enter NFT contract address">
+          </div>
+          <div class="form-group">
+            <label for="loanNftId">NFT ID:</label>
+            <input type="number" class="form-control" id="loanNftId" placeholder="Enter NFT ID">
+          </div>
+          <button type="button" class="btn btn-outline-success btn-block" onclick="loanByNft()">Loan by NFT</button>
+        </form>
+      </div>
+    </div>
+    <div class="custom-divider"></div>
+    <!-- Check Loan Status -->
+    <div class="row mb-4">
+      <div class="col-md-6 offset-md-3">
+        <form class="form-container">
+          <div class="form-group">
+            <label for="checkLoanId">Loan ID:</label>
+            <input type="number" class="form-control" id="checkLoanId" placeholder="Enter loan ID">
+          </div>
+          <button type="button" class="btn btn-outline-secondary btn-block" onclick="checkLoan()">Check Loan Status</button>
+        </form>
+      </div>
+    </div>
+  </div>
+
   <script src="main.js" type="module"></script>
+  <script src="https://code.jquery.com/jquery-3.5.1.slim.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.9.2/dist/umd/popper.min.js"></script>
+  <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
+  <script>
+    function toggleLoanType() {
+      var loanTypeSwitch = document.getElementById('loanTypeSwitch');
+      var loanTypeLabel = document.getElementById('loanTypeLabel');
+      if (loanTypeSwitch.checked) {
+        document.getElementById('dexLoanForm').style.display = 'none';
+        document.getElementById('nftLoanForm').style.display = 'block';
+        loanTypeLabel.textContent = 'NFT';
+      } else {
+        document.getElementById('dexLoanForm').style.display = 'block';
+        document.getElementById('nftLoanForm').style.display = 'none';
+        loanTypeLabel.textContent = 'DEX Tokens';
+      }
+    }
+  </script>
+
 </body>
 
 </html>

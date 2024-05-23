@@ -61,7 +61,7 @@ contract DecentralizedFinance is ERC20 {
         payable(msg.sender).transfer(ethToTrade);
     }
 
-    function loan(uint256 dexAmount, uint256 deadline) external {
+    function loan(uint256 dexAmount, uint256 deadline) external returns (uint256) {
         require(balanceOf(msg.sender) >= dexAmount,"User does not have enough DEX tokens.");
         require(deadline <= maxLoanDuration, "Loan duration should not exceed the maximum loan duration");
         uint256 ethAmount = dexAmount*dexSwapRate;
@@ -78,9 +78,11 @@ contract DecentralizedFinance is ERC20 {
         loans[loanID] = l;
 
         emit loanCreated(msg.sender, ethAmount, deadline);
+        return loanID;
     }
 
-    function returnLoan(uint256 loanId) external payable {
+    function returnLoan(uint256 loanId, uint256 weiAmount) external payable {
+        //weiAmount will replace msg.value
         require(loans[loanId].borrower == msg.sender, "Id not valid or Loan's borrower does not match");
         Loan memory thisLoan = loans[loanId];
         uint256 remaining = 0;
