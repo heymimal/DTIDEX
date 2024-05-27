@@ -95,29 +95,45 @@ contract DecentralizedFinance is ERC20 {
 
     function returnLoan(uint256 loanId) external payable {//maybe add check to deadline?
         require(loans[loanId].borrower == msg.sender, "Id not valid or Loan's borrower does not match");
+        require(msg.value >= dexSwapRate);
         
-        uint256 remaining = 0; // might remove
+        uint256 returning = 0; // might remove
+        uint256 dex = 0;
         uint256 debt = loans[loanId].amount; // money to return
+        address to;
+
+        if(debt <= msg.value){
+            returning = msg.value - debt; //return money to user if extra was sent
+            dex = loans[loanId].amount/dexSwapRate;
+        } else {
+            dex = msg.value/dexSwapRate;
+        }
 
         if(loans[loanId].isBasedNft){ // if nft has to fully return
             require(debt <= msg.value,"For a NFT based loan, all value must be repaid");
+            to = loans[loanId].lender; //send to lender (B)
             delete loans[loanId];
 
         } else {
-            if (debt >= msg.value){
+            to = msg.sender; //send coins to user
+            if (debt > msg.value){
                 loans[loanId].amount = loans[loanId].amount  - msg.value;
             } else {
-                remaining = debt - msg.value;
                 delete loans[loanId];
             }
         }
-        
-        uint256 dex = msg.value/dexSwapRate;
 
-        //transfer DEX and Eth
-        _transfer(address(this), msg.sender,dex);
-        payable(address(this)).transfer(msg.value);
-        balance = balance + msg.value;
+        if (to != address(0)){
+            _transfer(address(this), to,dex);
+        }
+
+        balance += msg.value; 
+        if(returning > 0){ //payback extra money
+            payable(address(msg.sender)).transfer(returning);
+            balance -= returning;
+        }
+    
+                     
     }
 
     function getBalance() public view returns (uint256) {
@@ -142,6 +158,7 @@ contract DecentralizedFinance is ERC20 {
 
     function makeLoanRequestByNft(IERC721 nftContract, uint256 nftId, uint256 loanAmount, uint256 deadline) external returns(uint256){
         // check if sender owns the nft
+        //IERC721(nftContract).owner(nftId)
         require(nftContract.ownerOf(nftId) == msg.sender, "You do not own this NFT");
 
         //assuming maxDeadline is only related to the direct contracts
@@ -150,12 +167,12 @@ contract DecentralizedFinance is ERC20 {
         loanIdCounter.increment();
         uint256 loanID = loanIdCounter.current();
         loans[loanID] = newLoan;
-        emit loanCreated(newLoan.borrower, loanAmount, deadline);
+        emit loanCreated(loans[loanID].borrower, loanAmount, deadline);
         return loanID;
     }
 
     function cancelLoanRequestByNft(IERC721 nftContract, uint256 nftId) external {
-        for (uint256 i; i < loanIdCounter.current(); i++){
+        for (uint256 i; i <= loanIdCounter.current(); i++){
             if(loans[i].isBasedNft && loans[i].nftContract == address(nftContract) 
             && loans[i].nftId == nftId && loans[i].borrower == msg.sender){
                 delete loans[i];
@@ -166,7 +183,7 @@ contract DecentralizedFinance is ERC20 {
     function loanByNft(IERC721 nftContract, uint256 nftId) external {
         // TODO: implement this
         // NFT contract creation
-        for (uint256 i = 0;i < loanIdCounter.current() ; i++) 
+        for (uint256 i = 1;i <= loanIdCounter.current() ; i++) 
         { 
             if(loans[i].isBasedNft == true && loans[i].nftId == nftId 
                 && loans[i].nftContract == address(nftContract)) { // search for the nft given
@@ -222,20 +239,46 @@ loanByNft function).
 
         }
     }
+
+    struct NftInfo {
+        uint256 nftId;
+        uint256 loanPrice;
+    }
     
-    function getAvailableNFTs () public view { //see the available NFTs to lend ETH to other users
+    function getAvailableNFTs () public view returns (NftInfo[]memory){ //see the available NFTs to lend ETH to other users
+        uint256 count = 0;
+        console.log(loanIdCounter.current());
+        for (uint256 i = 1;i <= loanIdCounter.current() ; i++) {
+            if(loans[i].isBasedNft){ // to filter out unavailable loans
+                //add nft to return
+                count++;
+            }
+        }
+        NftInfo[] memory availableNFTs = new NftInfo[](count);
+        uint256 index = 0;
+
+        for (uint256 i = 0;i <= loanIdCounter.current() ; i++) {
+            if(loans[i].isBasedNft && loans[i].lender == address(0)){ ///get the loans and add to list
+                availableNFTs[index] = NftInfo(loans[i].nftId,loans[i].amount);
+                index++;
+            }
+        }
+        console.log(availableNFTs[0].nftId);
+        return availableNFTs; // return list
 
     }
 
     function getBorrowedEth () public view {
-
+        // borrowed eth tokens -> tokens that the user borrowed from every loan associated with him
+        // check loans[i].borrower == msg.sender and convert eth to dex
     }
 
     function getNotPaidBack () public view {
-        
+        // not paid back eth tokens i am assuming to be eth tokens that other users have not paid back
+        // check loans[i].lender == msg.sender and convert eth to dex?
     }
 
     function getTotalBorrowedAndNotPaidBackEth() public view {
-        
+        // two previous functions together
     }
 }
