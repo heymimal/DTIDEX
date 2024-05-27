@@ -4,7 +4,8 @@ pragma solidity ^0.8.17;
 import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import "@openzeppelin/contracts/token/ERC721/IERC721.sol";
 import "@openzeppelin/contracts/utils/Counters.sol";
-import "contracts/nft.sol";
+import "nft.sol";
+import "hardhat/console.sol";
 
 contract DecentralizedFinance is ERC20 {
     
@@ -34,62 +35,74 @@ contract DecentralizedFinance is ERC20 {
     constructor() ERC20("DEX", "DEX") {
         //initialize
         owner = payable(msg.sender);
-        maxLoanDuration = 1 days;
+        maxLoanDuration = 10; // in days
         dexSwapRate = 100 wei;
         _mint(address(this), 10**30);
 
     }
 
-    function buyDex() external payable {
-        // TODO: implement this
+    function buyDex() external payable { // buy DEX tokens
+        // check values for DEX exchange and contract ether balance
         require(msg.value >= dexSwapRate, "Insufficient amount in msg"); // value in eth
-
         uint256 tokenAmount = msg.value/dexSwapRate;
         require(tokenAmount <= balanceOf(address(this)),"Not sufficient tokens for sale");
+        
+        //Trasnfer DEX and ETH
         _transfer(address(this), msg.sender,tokenAmount);
         balance += msg.value;
     }
 
-    function sellDex(uint256 dexAmount) external {
-        // TODO: implement this
+    function sellDex(uint256 dexAmount) external { // sell his/her DEX tokens
+        // check values for DEX exchange and contract ether balance
         require(dexAmount > 0, "No DEX coins were provided");
         require(balanceOf(address(msg.sender)) >= dexAmount,"User does not have enough coins");
         uint256 ethToTrade = dexAmount * dexSwapRate;
         require(balance >= ethToTrade, "Contract does not have sufficient ETH");
+        
+        //transfer DEX and Eth
         balance = balance - ethToTrade;
         _transfer(msg.sender, address(this),dexAmount);
         payable(msg.sender).transfer(ethToTrade);
     }
 
-    function loan(uint256 dexAmount, uint256 deadline) external returns (uint256) {
+    function loan(uint256 dexAmount, uint256 deadline) external returns(uint256) { //ask for a loan
+        //pre-conditions
         require(balanceOf(msg.sender) >= dexAmount,"User does not have enough DEX tokens.");
         require(deadline <= maxLoanDuration, "Loan duration should not exceed the maximum loan duration");
+        
         uint256 ethAmount = dexAmount*dexSwapRate;
         require(ethAmount <= balance, "Not enough ETH in the contract");
         // the longer the payback deadline, the lower the value of ETH per DEX, and
-        
-        
+        // Add transfer method different - ler enunciado 
+        uint256 deadlineInSeconds = deadline * 86400;
+        uint256 dl = block.timestamp + deadlineInSeconds;
+
+        //transfer DEX and Eth
         payable(msg.sender).transfer(ethAmount/2); //transfer half of the value
         balance = balance - ethAmount/2;
         _transfer(msg.sender, address(this), dexAmount); //send all dex coins 
-        Loan memory l = Loan(address(this),msg.sender,deadline,ethAmount,false,address(0),0); // create a loan
+
+        //create new loan
+        Loan memory l = Loan(address(this),msg.sender,dl,ethAmount,false,address(0),0); // create a loan
         loanIdCounter.increment();
         uint256 loanID = loanIdCounter.current();
         loans[loanID] = l;
 
-        emit loanCreated(msg.sender, ethAmount, deadline);
+        //emit event
+        emit loanCreated(msg.sender, ethAmount, dl);
         return loanID;
     }
 
-    function returnLoan(uint256 loanId, uint256 weiAmount) external payable {
-        //weiAmount will replace msg.value
+    function returnLoan(uint256 loanId) external payable {//maybe add check to deadline?
         require(loans[loanId].borrower == msg.sender, "Id not valid or Loan's borrower does not match");
-        Loan memory thisLoan = loans[loanId];
-        uint256 remaining = 0;
-        uint256 debt = thisLoan.amount;
-        if(thisLoan.isBasedNft){ // if nft, has to fully return
+        
+        uint256 remaining = 0; // might remove
+        uint256 debt = loans[loanId].amount; // money to return
+
+        if(loans[loanId].isBasedNft){ // if nft has to fully return
             require(debt <= msg.value,"For a NFT based loan, all value must be repaid");
             delete loans[loanId];
+
         } else {
             if (debt >= msg.value){
                 loans[loanId].amount = loans[loanId].amount  - msg.value;
@@ -98,19 +111,19 @@ contract DecentralizedFinance is ERC20 {
                 delete loans[loanId];
             }
         }
-        balance = balance +msg.value;
+        
         uint256 dex = msg.value/dexSwapRate;
+
+        //transfer DEX and Eth
         _transfer(address(this), msg.sender,dex);
-        /*
-        returnLoan(unit256 loanId, uint256 weiAmount): this function allows a user to pay
-back his borrowed ETH, recovering a proportional amount of DEX. Notice that users
-can make partial repayments on their loans that are not NFT-based. This could benefit
-the users who can repay only part of the loan amount by the deadline.
-        */
+        payable(address(this)).transfer(msg.value);
+        balance = balance + msg.value;
     }
 
     function getBalance() public view returns (uint256) {
-        require (msg.sender == owner, "You are not the owner");
+       // require (msg.sender == owner, "You are not the owner");
+       // "when called by the contract owner" but users are supposed to be able 
+       // see the total amount of ETH the contract has
         return balance;
     }
 
@@ -119,27 +132,110 @@ the users who can repay only part of the loan amount by the deadline.
         dexSwapRate = rate;
     }
 
+    function getDexSwapRate() public view returns (uint256) { //see the exchange rate
+        return dexSwapRate;
+    }
+
     function getDexBalance() public view returns (uint256) {
        return balanceOf(msg.sender);
     }
 
-    function makeLoanRequestByNft(IERC721 nftContract, uint256 nftId, uint256 loanAmount, uint256 deadline) external {
-        // TODO: implement this
+    function makeLoanRequestByNft(IERC721 nftContract, uint256 nftId, uint256 loanAmount, uint256 deadline) external returns(uint256){
+        // check if sender owns the nft
+        require(nftContract.ownerOf(nftId) == msg.sender, "You do not own this NFT");
+
+        //assuming maxDeadline is only related to the direct contracts
+        //create loan
+        Loan memory newLoan = Loan(address(0),msg.sender,deadline,loanAmount,true,address(nftContract),nftId);
+        loanIdCounter.increment();
+        uint256 loanID = loanIdCounter.current();
+        loans[loanID] = newLoan;
+        emit loanCreated(newLoan.borrower, loanAmount, deadline);
+        return loanID;
     }
 
     function cancelLoanRequestByNft(IERC721 nftContract, uint256 nftId) external {
-        // TODO: implement this
+        for (uint256 i; i < loanIdCounter.current(); i++){
+            if(loans[i].isBasedNft && loans[i].nftContract == address(nftContract) 
+            && loans[i].nftId == nftId && loans[i].borrower == msg.sender){
+                delete loans[i];
+             }
+        }
     }
 
-    /*function loanByNft(IERC721 nftContract, uint256 nftId) external {
+    function loanByNft(IERC721 nftContract, uint256 nftId) external {
         // TODO: implement this
+        // NFT contract creation
+        for (uint256 i = 0;i < loanIdCounter.current() ; i++) 
+        { 
+            if(loans[i].isBasedNft == true && loans[i].nftId == nftId 
+                && loans[i].nftContract == address(nftContract)) { // search for the nft given
 
-        uint256 loanAmount = 0;
-        uint256 deadline = maxLoanDuration;
-        emit loanCreated(msg.sender, loanAmount, deadline);
+                require(msg.sender != loans[i].borrower, "This is a loan requested by you."); // "another user B"
+                
+                //pre-conditions
+                uint256 loanAmount = loans[i].amount;
+                uint256 dex = loanAmount/dexSwapRate;
+                require(balanceOf(msg.sender) >= dex, "You do not have enough DEX coins for this transaction.");
+                require(balance > loanAmount, "Contract does not have enough Ether");
+                
+                loans[i].lender = msg.sender;
+
+                //activate loan duration here?
+                uint256 deadlineInSeconds = loans[i].deadline * 86400;
+                uint256 dl = block.timestamp + deadlineInSeconds;
+                loans[i].deadline = dl; // deadline activated
+
+                 //transfer DEX and Eth
+                _transfer(address(msg.sender), address(this), dex); //lender pays dex to contract ("locks")
+                payable(loans[i].borrower).transfer(loanAmount); //contract pay ether to loaner
+                balance = balance - loanAmount;
+            }
+        }
+        //assuming this is for the checkLoan function
+        //However, if A fails to repay the loan within the deadline, the contract transfers
+        // the ownership of the NFT to B and keeps the staked DEX tokens.
     }
+    
 
     function checkLoan(uint256 loanId) external {
-        // TODO: implement this
-    }*/
+        /*
+        this function allows the owner of the contract to check the
+status of a loan. If the loan’s repayment deadline has passed without repayment, the
+function must take the necessary steps to punish the borrower (described in
+loanByNft function).
+        */
+        //pre conditions
+        require(msg.sender == owner, "You are not the contract owner"); 
+        require(loans[loanId].borrower != address(0) && loans[loanId].isBasedNft, "Loan does not exist");
+        
+        uint256 currentTime = block.timestamp;
+        loans[loanId].amount = 1; // DELETE
+        if(currentTime > loans[loanId].deadline && loans[loanId].amount > 0){
+            address borrower = loans[loanId].borrower;
+            address lender = loans[loanId].lender;
+
+            // transfer ownership of the NFT to B and keep staked DEX
+            IERC721(loans[loanId].nftContract).transferFrom(borrower,lender,loans[loanId].nftId);
+
+            // end the loan and stuff -> if without repayment
+
+        }
+    }
+    
+    function getAvailableNFTs () public view { //see the available NFTs to lend ETH to other users
+
+    }
+
+    function getBorrowedEth () public view {
+
+    }
+
+    function getNotPaidBack () public view {
+        
+    }
+
+    function getTotalBorrowedAndNotPaidBackEth() public view {
+        
+    }
 }
