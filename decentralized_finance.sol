@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.17;
+pragma solidity ^0.8.24;
 
 import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import "@openzeppelin/contracts/token/ERC721/IERC721.sol";
@@ -280,17 +280,7 @@ loanByNft function).
 
     }
 
-    function getBorrowedEth () public view {
-        // borrowed eth tokens -> tokens that the user borrowed from every loan associated with him
-        // check loans[i].borrower == msg.sender and convert eth to dex
-    }
-
-    function getNotPaidBack () public view {
-        // not paid back eth tokens i am assuming to be eth tokens that other users have not paid back
-        // check loans[i].lender == msg.sender and convert eth to dex?
-    }
-
     function getTotalBorrowedAndNotPaidBackEth() public view {
-        // two previous functions together
+        //  TO DO
     }
 }
