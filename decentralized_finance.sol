@@ -37,7 +37,7 @@ contract DecentralizedFinance is ERC20 {
         owner = payable(msg.sender);
         maxLoanDuration = 10; // in days
         dexSwapRate = 100 wei;
-        _mint(address(this), 10**30);
+        _mint(address(this), 10**18);
 
     }
 
@@ -102,7 +102,7 @@ contract DecentralizedFinance is ERC20 {
         return loanID;
     }
 
-    function returnLoan(uint256 loanId) external payable {//maybe add check to deadline?
+    function returnLoan(uint256 loanId) external payable {
         require(loans[loanId].borrower == msg.sender, "Id not valid or Loan's borrower does not match");
         require(msg.value >= dexSwapRate && msg.value % dexSwapRate == 0, "Value needs to be higher and correct.");
         
@@ -187,11 +187,11 @@ contract DecentralizedFinance is ERC20 {
     }
 
     function cancelLoanRequestByNft(IERC721 nftContract, uint256 nftId) external {
-        for (uint256 i; i <= loanIdCounter.current(); i++){
+        for (uint256 i = 0; i <= loanIdCounter.current(); i++){
             if(loans[i].isBasedNft && loans[i].nftContract == address(nftContract) && loans[i].lender == address(0)
-            && loans[i].nftId == nftId && loans[i].borrower == msg.sender){ //can only cancel if there is no lender
-                console.log("canceling...");
+            && loans[i].nftId == nftId){ //can only cancel if there is no lender
                 delete loans[i];
+                break;
              }
         }
     }

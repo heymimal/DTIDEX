@@ -1,5 +1,5 @@
-
-
+import { defi_abi } from "./abi_decentralized_finance.js";
+import { nft_abi } from "./abi_nft.js";
 /*if (typeof window.ethereum !== 'undefined') {
     console.log('MetaMask is installed!');
     var web3 = new Web3(window.ethereum);
@@ -11,16 +11,15 @@ const gasLimit = 300000; // Adjust this value as needed
 const ethereum = new Web3.providers.HttpProvider('http://127.0.0.1:8545');
 //const web3 = new Web3();
 var web3 = new Web3(ethereum);
-// the part is related to the DecentralizedFinance smart contract
-const defi_contractAddress = "0x95E4ae9c6Ab02DE600AA208F8B428EDa7bC497c5";
-import { defi_abi } from "./abi_decentralized_finance.js";
+
+const defi_contractAddress = "0xD98cbF11367124fa4ADa0AF27dE4103D54411298";
 const defi_contract = new web3.eth.Contract(defi_abi, defi_contractAddress);
 
-// the part is related to the the SimpleNFT smart contract
-const nft_contractAddress = "0x9Db202504c95Dbac6816601c150f4ac17fC7eD72";
-import { nft_abi } from "./abi_nft.js";
+const nft_contractAddress = "0x82dE58b0C558286A25446472B5be65eDD766d0c5";
 const nft_contract = new web3.eth.Contract(nft_abi, nft_contractAddress);
 
+const addressZero = "0x0000000000000000000000000000000000000000";
+var isOwner = false;
 async function connectMetaMask() {
     document.getElementById('DEX info').style.display = 'block';
     if (ethereum) {
@@ -31,10 +30,12 @@ async function connectMetaMask() {
             console.log("Connected account:",accounts[0] );
             const owner = await defi_contract.methods.owner().call();
             console.log("Contract owner:", owner);
-            console.log(accounts[0].toLowerCase() ===  owner.toLowerCase());
-            setInterfaceBalance();
-            setInterfaceDex();
-            setInterfaceSwapRate();
+            isOwner = (accounts[0].toLowerCase() ===  owner.toLowerCase());
+            console.log(isOwner);
+            //setInterfaceBalance();
+            //setInterfaceDex();
+            //setInterfaceSwapRate();
+            changeType(DEX);
         } catch (error) {
             console.error("Error connecting to MetaMask:", error);
         }
@@ -117,14 +118,17 @@ async function loan() {
     const dexStake = document.getElementById("loanDexAmount").value;
     const deadline = document.getElementById('loanDeadlineDex').value;
 
+    console.log(dexStake);
+    console.log(deadline);
     const fromAddress = (await window.ethereum.request({
         method: "eth_accounts",
     }))[0];
     try {
         const loanId = await defi_contract.methods.loan(dexStake, deadline).send({
                 from: fromAddress,
+                gas: gasLimit
             });
-        document.getElementById("loanDexAmount").value = "0";
+        document.getElementById("loanDexAmount").value = 0;
         refreshInterface();
         return loanId; // maybe create popup saying loan with id has been created?
     } catch (error) {
@@ -145,6 +149,7 @@ async function returnLoan() {
         await defi_contract.methods.returnLoan(loanId).send({
             from: fromAddress,
             value: weiAmount,
+            gas: gasLimit
         });
         refreshInterface();
     } catch (error) {
@@ -199,6 +204,10 @@ async function makeLoanRequestByNft() {
     }))[0];
 
     try {
+        await nft_contract.methods.approve(defi_contractAddress,nftId).send({
+            from: fromAddress,
+            gas: gasLimit
+        })
         const loanId = await defi_contract.methods.makeLoanRequestByNft(nft_contractAddress,
             nftId,loanNftAmount, deadline).send({
                 from: fromAddress,
@@ -223,8 +232,14 @@ async function cancelLoanRequestByNft() {
     }))[0];
 
     try {
-        await defi_contract.methods.cancelLoanRequestByNft(nft_contract,nftId).send({
+        
+        await defi_contract.methods.cancelLoanRequestByNft(nft_contractAddress,nftId).send({
             from : fromAddress,
+            gas: gasLimit
+        })
+        await nft_contract.methods.approve(addressZero,nftId).send({
+            from: fromAddress,
+            gas: gasLimit
         })
 
     } catch (error) {
@@ -269,9 +284,11 @@ async function checkLoan() {
     const fromAddress = (await window.ethereum.request({
         method: "eth_accounts",
     }))[0];
+    console.log("in here!");
     try {
         await defi_contract.methods.checkLoan(loanId).send({
             from: fromAddress,
+            gas: gasLimit,
         });
         } catch (error) {
         console.error("Error checking loan:", error);
@@ -287,6 +304,21 @@ async function listenToLoanCreation() {
 }
 
 async function mintNft(){ // TO DO
+    const fromAddress = (await window.ethereum.request({
+        method: "eth_accounts",
+    }))[0];
+
+    try {
+        const nftId = await nft_contract.methods.mint().send({
+            from: fromAddress,
+            value: 100, 
+            gas: gasLimit
+        })
+        console.log(nftId);
+        return nftId; // do something with this!
+    } catch (error) {
+        console.error("error in mint!", error)
+    }
     console.log("minting nft...");
 }
 
@@ -335,5 +367,25 @@ window.mintNft = mintNft;
 window.setInterfaceSwapRate = setInterfaceSwapRate;
 window.setInterfaceBalance = setInterfaceBalance;
 window.setInterfaceDex = setInterfaceDex;
-windows.getTotalBorrowedAndNotPaidBackEth = getTotalBorrowedAndNotPaidBackEth;
-windows.checkLoanStatus = checkLoanStatus;
+window.getTotalBorrowedAndNotPaidBackEth = getTotalBorrowedAndNotPaidBackEth;
+window.checkLoanStatus = checkLoanStatus;
+window.changeType = changeType;
+
+
+
+function changeType(method){
+var nftMethods = document.getElementById('NFT');
+var dexMethods = document.getElementById('DEX');
+var ownerMethods = document.getElementById('owner');
+    if(method == DEX){
+    nftMethods.style.display = 'none';
+    dexMethods.style.display = 'block';
+    if(isOwner){
+        ownerMethods.style.display = 'block';
+    }
+    } else {
+        nftMethods.style.display = 'block';
+        dexMethods.style.display = 'none';
+        ownerMethods.style.display = 'none';
+    }
+}

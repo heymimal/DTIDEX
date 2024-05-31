@@ -144,7 +144,7 @@
     </div>
   </div>
 
-  <div id ="owner" style = "display: block;">
+  <div id ="owner" style = "display: none;">
     <div class="row mb-4">
       <div class="col-md-6 offset-md-3">
         <form class="form-container">
@@ -152,7 +152,7 @@
             <label for="dexSwapRate">New DEX Swap Rate:</label>
             <input type="number" class="form-control" min="1" step="1" id="newdexSwapRate" placeholder="100">
           </div>
-          <button type="button" class="btn btn-outline-primary btn-block" onclick="setDexSwapRate()">Set DEX Swap Rate</button>
+          <button type="button" class="btn btn-outline-primary btn-block" onclick="setRateEthToDex()">Set DEX Swap Rate</button>
         </form>
       </div>
     </div>
@@ -163,7 +163,7 @@
         <form class="form-container">
           <div class="form-group">
             <label for="checkLoanId">Loan ID:</label>
-            <input type="number" class="form-control" min="0" step="1" id="checkLoanId" placeholder="0">
+            <input type="number" class="form-control" min="0" step="1" id="checkLoanId" placeholder=0>
           </div>
           <button type="button" class="btn btn-outline-secondary btn-block" onclick="checkLoan()">Check Loan Status</button>
         </form>
@@ -173,7 +173,7 @@
     <!-- ADD HERE THE CHECK LOAN AND INFORM WHEN A LOAN IS CREATED-->
   </div>
 
-  <div id="DEX" style="display:block">
+  <div id="DEX" style="display:none">
     <div class="container mt-5">
       <!-- Buy DEX Tokens -->
       <div class="row mb-4">
@@ -181,7 +181,7 @@
           <form class="form-container">
             <div class="form-group">
               <label for="buyEthAmount">Amount of DEX Tokens:</label>
-              <input type="number" class="form-control" min="1" step="1" id="buyEthAmount" placeholder="0">
+              <input type="number" class="form-control" min="1" step="1" id="buyEthAmount" placeholder=0>
             </div>
             <button type="button" class="btn btn-success btn-block" onclick="buyDex()">Buy DEX Tokens</button>
           </form>
@@ -194,7 +194,7 @@
           <form class="form-container">
             <div class="form-group">
               <label for="sellDexAmount">Amount of DEX Tokens:</label>
-              <input type="number" class="form-control" min="1" step="1" id="sellDexAmount" placeholder="0">
+              <input type="number" class="form-control" min="1" step="1" id="sellDexAmount" placeholder=0>
             </div>
             <button type="button" class="btn btn-warning btn-block" onclick="sellDex()">Sell DEX Tokens</button>
           </form>
@@ -219,11 +219,11 @@
           <form class="form-container">
             <div class="form-group">
               <label for="loanDexAmount">Amount of DEX Tokens:</label>
-              <input type="number" class="form-control" min="1" step="1" id="loanDexAmount" placeholder="0">
+              <input type="number" class="form-control" min="1" step="1" id="loanDexAmount" placeholder=0>
             </div>
             <div class="form-group">
               <label for="loanDeadlineDex">Deadline (in days):</label>
-              <input type="number" class="form-control" min="0" step="1" id="loanDeadlineDex" placeholder="1">
+              <input type="number" class="form-control" min="0" step="1" id="loanDeadlineDex" placeholder=1>
             </div>
             <button type="button" class="btn btn-info btn-block" onclick="loan()">Request Loan</button>
           </form>
@@ -258,11 +258,11 @@
           <form class="form-container">
             <div class="form-group">
               <label for="returnLoanId">Loan ID:</label>
-              <input type="number" class="form-control" min="1" step="1" id="returnLoanId" placeholder="0">
+              <input type="number" class="form-control" min="1" step="1" id="returnLoanId" placeholder=0>
             </div>
             <div class="form-group">
               <label for="returnWeiAmount">Amount (Wei):</label>
-              <input type="number" class="form-control" min="1" step="1" id="returnWeiAmount" placeholder="0">
+              <input type="number" class="form-control" min="1" step="1" id="returnWeiAmount" placeholder=1>
             </div>
             <button type="button" class="btn btn-secondary btn-block" onclick="returnLoan()">Pay back loan</button>
           </form>
@@ -275,7 +275,7 @@
           <form class="form-container">
             <div class="form-group">
               <label for="cancelNftId">NFT ID:</label>
-              <input type="number" class="form-control" min="1" step="1" id="cancelNftId" placeholder="0">
+              <input type="number" class="form-control" min="1" step="1" id="cancelNftId" placeholder=0>
             </div>
             <button type="button" class="btn btn-outline-danger btn-block" onclick="cancelLoanRequestByNft()">Cancel NFT Loan Request</button>
           </form>
@@ -288,7 +288,7 @@
           <form class="form-container">
             <div class="form-group">
               <label for="reqloanNftId">NFT ID:</label>
-              <input type="number" class="form-control"  min="1" step="1"id="reqloanNftId" placeholder="Enter NFT ID">
+              <input type="number" class="form-control"  min="1" step="1"id="reqloanNftId" placeholder=0>
             </div>
             <button type="button" class="btn btn-outline-success btn-block" onclick="loanByNft()">Loan by NFT</button>
           </form>
@@ -316,23 +316,11 @@
   <script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.9.2/dist/umd/popper.min.js"></script>
   <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
   <script>
+  
+    
     var loanTypeSwitch = document.getElementById('loanTypeSwitch');
     var loanTypeLabel = document.getElementById('loanTypeLabel');
-    var nftMethods = document.getElementById('NFT');
-    var dexMethods = document.getElementById('DEX');
-
-    function changeType(method){
-      if(method == DEX){
-        nftMethods.style.display = 'none'
-        dexMethods.style.display = 'block'
-        console.log("dex!");
-      } else {
-        nftMethods.style.display = 'block'
-        dexMethods.style.display = 'none'
-        console.log("nft!");
-      }
-    }
-
+    
     function toggleLoanType() {
       
       if (loanTypeSwitch.checked) {

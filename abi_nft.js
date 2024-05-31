@@ -306,7 +306,13 @@ export const nft_abi = [
 	{
 		"inputs": [],
 		"name": "mint",
-		"outputs": [],
+		"outputs": [
+			{
+				"internalType": "uint256",
+				"name": "",
+				"type": "uint256"
+			}
+		],
 		"stateMutability": "payable",
 		"type": "function"
 	},
