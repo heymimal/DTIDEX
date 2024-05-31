@@ -44,12 +44,18 @@ contract DecentralizedFinance is ERC20 {
     function buyDex() external payable { // buy DEX tokens
         // check values for DEX exchange and contract ether balance
         require(msg.value >= dexSwapRate, "Insufficient amount in msg"); // value in eth
+        uint256 remaining = msg.value % dexSwapRate;
+        
         uint256 tokenAmount = msg.value/dexSwapRate;
         require(tokenAmount <= balanceOf(address(this)),"Not sufficient tokens for sale");
-        
-        //Trasnfer DEX and ETH
+        if(remaining != 0){ // returning extra
+            payable(msg.sender).transfer(remaining);
+            balance -= remaining;
+        }
+        //Transfer DEX and ETH
         _transfer(address(this), msg.sender,tokenAmount);
         balance += msg.value;
+        //dexSwapRate +=1; //rules??
     }
 
     function sellDex(uint256 dexAmount) external { // sell his/her DEX tokens
@@ -63,6 +69,7 @@ contract DecentralizedFinance is ERC20 {
         balance = balance - ethToTrade;
         _transfer(msg.sender, address(this),dexAmount);
         payable(msg.sender).transfer(ethToTrade);
+        //dexSwapRate -= 1; // rules??
     }
 
     function loan(uint256 dexAmount, uint256 deadline) external returns(uint256) { //ask for a loan
@@ -91,6 +98,7 @@ contract DecentralizedFinance is ERC20 {
 
         //emit event
         emit loanCreated(msg.sender, ethAmount, dl);
+        //dexSwapRate = dexSwapRate + 1; // rules?
         return loanID;
     }
 
@@ -102,6 +110,7 @@ contract DecentralizedFinance is ERC20 {
         uint256 dex = 0;
         uint256 debt = loans[loanId].amount; // money to return
         address to;
+        bool finished;
 
         if(debt <= msg.value){
             returning = msg.value - debt; //return money to user if extra was sent
@@ -112,16 +121,17 @@ contract DecentralizedFinance is ERC20 {
 
         if(loans[loanId].isBasedNft){ // if nft has to fully return
             require(debt <= msg.value,"For a NFT based loan, all value must be repaid");
-            console.log("FNT");
+            dex = (msg.value - debt/11) / dexSwapRate; // contract keeps 10%
             to = loans[loanId].lender; //send to lender (B)
             delete loans[loanId];
-
+            finished = true;
         } else {
             to = msg.sender; //send coins to user
             if (debt > msg.value){
                 loans[loanId].amount = loans[loanId].amount  - msg.value;
             } else {
                 delete loans[loanId];
+                finished = true;
             }
         }
 
@@ -133,6 +143,10 @@ contract DecentralizedFinance is ERC20 {
         if(returning > 0){ //payback extra money
             payable(address(msg.sender)).transfer(returning);
             balance -= returning;
+        }
+
+        if (finished) { //loan has been deleted
+            //dexSwapRate = dexSwapRate - 1; //rules
         }
     
                      
@@ -160,7 +174,6 @@ contract DecentralizedFinance is ERC20 {
 
     function makeLoanRequestByNft(IERC721 nftContract, uint256 nftId, uint256 loanAmount, uint256 deadline) external returns(uint256){ // for this to work, owner of the nft needs to approve the dex contract 
         // check if sender owns the nft
-        //IERC721(nftContract).owner(nftId)
         require(nftContract.ownerOf(nftId) == msg.sender, "You do not own this NFT");
 
         //assuming maxDeadline is only related to the direct contracts
@@ -184,7 +197,6 @@ contract DecentralizedFinance is ERC20 {
     }
 
     function loanByNft(IERC721 nftContract, uint256 nftId) external {
-        // TODO: implement this
         // NFT contract creation
         for (uint256 i = 1;i <= loanIdCounter.current() ; i++) 
         { 
@@ -193,7 +205,6 @@ contract DecentralizedFinance is ERC20 {
                 && loans[i].nftContract == address(nftContract);
             console.log(check);
             if(check) { // search for the nft given
-
                 require(msg.sender != loans[i].borrower, "This is a loan requested by you."); // "another user B"
                 
                 //pre-conditions
@@ -213,6 +224,8 @@ contract DecentralizedFinance is ERC20 {
                     deadlineInSeconds = loans[i].deadline * 86400;
                 }
                 loans[i].deadline = dl + deadlineInSeconds; // deadline activated
+                //adding a % of the loan for the contract -> 10%
+                loans[i].amount = loans[i].amount + (loans[i].amount/10);
 
                  //transfer DEX and Eth
                 _transfer(address(msg.sender), address(this), dex); //lender pays dex to contract ("locks")
@@ -259,7 +272,6 @@ loanByNft function).
     
     function getAvailableNFTs () public view returns (NftInfo[]memory){ //see the available NFTs to lend ETH to other users
         uint256 count = 0;
-        console.log(loanIdCounter.current());
         for (uint256 i = 1;i <= loanIdCounter.current() ; i++) {
             if(loans[i].isBasedNft){ // to filter out unavailable loans
                 //add nft to return
@@ -275,12 +287,34 @@ loanByNft function).
                 index++;
             }
         }
-        console.log(availableNFTs[0].nftId);
+
         return availableNFTs; // return list
 
     }
 
-    function getTotalBorrowedAndNotPaidBackEth() public view {
-        //  TO DO
+    struct LoanInfo {
+        uint256 loanId;
+        uint256 debt;
+    }
+    
+
+    function getTotalBorrowedAndNotPaidBackEth() public view returns (LoanInfo[]memory) {
+        uint256 count = 0;
+        for (uint256 i = 1;i <= loanIdCounter.current() ; i++) {
+            if(loans[i].borrower == msg.sender && loans[i].lender != address(0)){
+                count++;
+            }
+        }
+
+        LoanInfo[] memory notPaidBack = new LoanInfo[](count);
+        uint256 index = 0;
+        for (uint256 i = 0;i <= loanIdCounter.current() ; i++) {
+            if(loans[i].borrower == msg.sender  && loans[i].lender != address(0)){ ///get the loans and add to list
+                notPaidBack[index] = LoanInfo(i,loans[i].amount);
+                index++;
+            }
+        }
+
+        return notPaidBack;
     }
 }

@@ -7,16 +7,17 @@
     console.log('MetaMask is not installed. Connecting to Ganache...');
     
 }*/
+const gasLimit = 300000; // Adjust this value as needed
 const ethereum = new Web3.providers.HttpProvider('http://127.0.0.1:8545');
 //const web3 = new Web3();
 var web3 = new Web3(ethereum);
 // the part is related to the DecentralizedFinance smart contract
-const defi_contractAddress = "0x915E454d216EA37F29b392974dD77312f38b05fa";
+const defi_contractAddress = "0x95E4ae9c6Ab02DE600AA208F8B428EDa7bC497c5";
 import { defi_abi } from "./abi_decentralized_finance.js";
 const defi_contract = new web3.eth.Contract(defi_abi, defi_contractAddress);
 
 // the part is related to the the SimpleNFT smart contract
-const nft_contractAddress = "0xF267b4d86fd51CbC20A26EF6b6333A31849e7Ab1";
+const nft_contractAddress = "0x9Db202504c95Dbac6816601c150f4ac17fC7eD72";
 import { nft_abi } from "./abi_nft.js";
 const nft_contract = new web3.eth.Contract(nft_abi, nft_contractAddress);
 
@@ -27,7 +28,10 @@ async function connectMetaMask() {
             const accounts = await window.ethereum.request({
                 method: "eth_requestAccounts",
             });
-            console.log("Connected account:", accounts[0]);
+            console.log("Connected account:",accounts[0] );
+            const owner = await defi_contract.methods.owner().call();
+            console.log("Contract owner:", owner);
+            console.log(accounts[0].toLowerCase() ===  owner.toLowerCase());
             setInterfaceBalance();
             setInterfaceDex();
             setInterfaceSwapRate();
@@ -41,12 +45,22 @@ async function connectMetaMask() {
 }
 
 async function setRateEthToDex() {
-    // TODO: implement this
+    const swapRate = document.getElementById('newdexSwapRate').value;
+    const fromAddress = (await window.ethereum.request({
+        method: "eth_accounts",
+    }))[0];
+    if(swapRate > 0){
+        try {
+            await defi_contract.methods.setDexSwapRate(swapRate).send({
+                from: fromAddress,
+            });
+            setInterfaceSwapRate();
+            } catch (error) {
+            console.error("Error setting DEX rate:", error);
+        }
+    }
 }
 
-async function checkLoanStatus() {
-    // TODO: implement this
-}
 
 async function buyDex() {
 
@@ -54,17 +68,17 @@ async function buyDex() {
         method: "eth_accounts",
     }))[0];
 
-    const lastRate = await getRateEthToDex();
+    const dex_amount = document.getElementById('buyEthAmount').value;
+    const swapRate = await getRateEthToDex();
 
     try {
         await defi_contract.methods.buyDex().send({
             from: fromAddress,
-            value: document.getElementById("tokenAmountBuy").value,
+            value: dex_amount * swapRate,
         });
-        //document.getElementById("tokenAmountBuy").value = "";
+        document.getElementById("buyEthAmount").value = 0;
         console.log(`DEX successfully bought for account ${fromAddress}`);
-        setInterfaceBalance();
-        setInterfaceDex();
+        refreshInterface();
     } catch (error) {
         console.error("Error buying DEX:", error);
     }
@@ -82,76 +96,208 @@ async function getDex() {
 }
 
 async function sellDex() {
-    // TODO: implement this
+    const fromAddress = (await window.ethereum.request({
+        method: "eth_accounts",
+    }))[0];
+
+    try {
+        const amountSell = document.getElementById("sellDexAmount").value;
+        await defi_contract.methods.sellDex(amountSell).send({
+            from: fromAddress,
+        });
+        document.getElementById("sellDexAmount").value ="";
+        refreshInterface();
+        console.log("Successfuly sold DEX");
+    } catch (error) {
+        console.error("Error selling DEX:", error);
+    }
 }
 
 async function loan() {
-    // TODO: implement this
+    const dexStake = document.getElementById("loanDexAmount").value;
+    const deadline = document.getElementById('loanDeadlineDex').value;
+
+    const fromAddress = (await window.ethereum.request({
+        method: "eth_accounts",
+    }))[0];
+    try {
+        const loanId = await defi_contract.methods.loan(dexStake, deadline).send({
+                from: fromAddress,
+            });
+        document.getElementById("loanDexAmount").value = "0";
+        refreshInterface();
+        return loanId; // maybe create popup saying loan with id has been created?
+    } catch (error) {
+        console.error("Error creating loan:", error);
+    }
+    
 }
 
 async function returnLoan() {
-    // TODO: implement this
+    const loanId = document.getElementById('returnLoanId').value;
+    const weiAmount = document.getElementById('returnWeiAmount').value;
+
+    const fromAddress = (await window.ethereum.request({
+        method: "eth_accounts",
+    }))[0];
+
+    try {
+        await defi_contract.methods.returnLoan(loanId).send({
+            from: fromAddress,
+            value: weiAmount,
+        });
+        refreshInterface();
+    } catch (error) {
+        console.error("Error returning loan:", error);
+    }
 }
 
 async function getEthTotalBalance() {
-    
     const ethBalance = await defi_contract.methods.getBalance().call();
     return ethBalance;
 }
 
 async function getRateEthToDex() {
-    
     const rate = await defi_contract.methods.getDexSwapRate().call();
     return rate;
 }
 
 
 async function getAvailableNfts() {
-    // TODO: implement this
+    const availableNFTs = await defi_contract.methods.getAvailableNFTs().call();
+    console.log(availableNFTs);
+    return availableNFTs; //show them off somewhere
 }
 
 async function getTotalBorrowedAndNotPaidBackEth() {
     // TODO: implement this
+    const fromAddress = (await window.ethereum.request({
+        method: "eth_accounts",
+    }))[0];
+    try {
+        const notpaid = await defi_contract.methods.getTotalBorrowedAndNotPaidBackEth().send({
+            from: fromAddress,
+        })
+        console.log(notpaid);
+    } catch (error) {
+        console.error("error in this",error);
+    }
 }
 
 async function makeLoanRequestByNft() {
+    const nftId = document.getElementById('LoanNftId').value;
+    const loanNftAmount = document.getElementById('loanAmountNft').value;
+    const deadline = document.getElementById('loanDeadlineNft').value;
+
+    if (!nftId || !loanNftAmount || !deadline) {
+        console.error("All input fields are required.");
+        return;
+    }
+
+    const fromAddress = (await window.ethereum.request({
+        method: "eth_accounts",
+    }))[0];
+
+    try {
+        const loanId = await defi_contract.methods.makeLoanRequestByNft(nft_contractAddress,
+            nftId,loanNftAmount, deadline).send({
+                from: fromAddress,
+                gas: gasLimit
+            });
+        document.getElementById("LoanNftId").value = '0';
+        document.getElementById('loanAmountNft').value = '0'
+        refreshInterface();
+        console.log(loanId);
+        return loanId; // maybe create popup saying loan with id has been created?
+    } catch (error) {
+        console.error("Error creating nft loan:", error);
+    }
     // TODO: implement this
 }
 
 async function cancelLoanRequestByNft() {
+    const nftId = document.getElementById('cancelNftId').value;
+
+    const fromAddress = (await window.ethereum.request({
+        method: "eth_accounts",
+    }))[0];
+
+    try {
+        await defi_contract.methods.cancelLoanRequestByNft(nft_contract,nftId).send({
+            from : fromAddress,
+        })
+
+    } catch (error) {
+        console.error("Error canceling nft loan", error);
+    }
+    
     // TODO: implement this
 }
 
 async function loanByNft() {
+    const nftId = document.getElementById('reqloanNftId')
+    const availableNFTs = await getAvailableNfts();
+    const price = 0;
+    for (let i = 0; i < availableNFTs.lenght; i+=2){
+        if(availableNFTs[i] == nftId){
+            price = availableNFTs[i+1];
+        }
+    }
+
+    const fromAddress = (await window.ethereum.request({
+        method: "eth_accounts",
+    }))[0];
+
+
+    if(price != 0){
+        try {
+            await defi_contract.methods.loanByNft(nft_contractAddress,nftId).send({
+                from: fromAddress,
+                value:price,
+                gas: gasLimit
+            })
+            refreshInterface();
+        } catch (error) {
+            console.error("error in loanbynft", error);
+        }
+    }
     // TODO: implement this
 }
 
 async function checkLoan() {
-    // TODO: implement this
+    const loanId = document.getElementById('checkLoanId').value;
+    const fromAddress = (await window.ethereum.request({
+        method: "eth_accounts",
+    }))[0];
+    try {
+        await defi_contract.methods.checkLoan(loanId).send({
+            from: fromAddress,
+        });
+        } catch (error) {
+        console.error("Error checking loan:", error);
+    }
+}
+
+async function checkLoanStatus() {
+    // TODO: implement this checking status of every created loan
 }
 
 async function listenToLoanCreation() {
     // TODO: implement this
 }
 
-async function getAllTokenURIs() {
-    // TODO: implement this
-}
-
-async function mintNft(){
+async function mintNft(){ // TO DO
     console.log("minting nft...");
 }
 
 //interface
 async function setInterfaceDex(){
-    console.log("!");
     const dexBalance = await getDex();
     const dexBalanceElem = document.getElementById("dexBalance");
     dexBalanceElem.innerHTML = ` ${dexBalance} `;
 }
 
 async function setInterfaceSwapRate(){
-    console.log("!");
     const swapRate = await getRateEthToDex();
     const swapRateElem = document.getElementById("swapRate");
     swapRateElem.innerHTML = ` ${swapRate} `;
@@ -159,10 +305,14 @@ async function setInterfaceSwapRate(){
 }
 
 async function setInterfaceBalance(){
-    console.log("!");
     const contractEth = await getEthTotalBalance();
     const contractEthElem = document.getElementById("contractEth");
     contractEthElem.innerHTML = ` ${contractEth} `;
+}
+
+async function refreshInterface(){
+    await setInterfaceBalance();
+    await setInterfaceDex();
 }
 
 
@@ -182,6 +332,8 @@ window.checkLoan = checkLoan;
 window.listenToLoanCreation = listenToLoanCreation;
 window.getAvailableNfts = getAvailableNfts;
 window.mintNft = mintNft;
-/*windows.getTotalBorrowedAndNotPaidBackEth = getTotalBorrowedAndNotPaidBackEth;
+window.setInterfaceSwapRate = setInterfaceSwapRate;
+window.setInterfaceBalance = setInterfaceBalance;
+window.setInterfaceDex = setInterfaceDex;
+windows.getTotalBorrowedAndNotPaidBackEth = getTotalBorrowedAndNotPaidBackEth;
 windows.checkLoanStatus = checkLoanStatus;
-windows.getAllTokenURIs = getAllTokenURIs;*/
