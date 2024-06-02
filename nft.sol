@@ -14,10 +14,15 @@ contract NFT is ERC721, Ownable {
             Ownable(msg.sender){
     }
 
-    function mint () external payable{
+    function mint () external payable returns (uint256){
         require(mintPrice <= msg.value, "Value needs to be greater or equal. ");
         nftIdCounter.increment();
         uint256 nftId = nftIdCounter.current();
         _mint(msg.sender,nftId);
+        return nftId;
+    }
+
+    function getLatestId() public view returns (uint256){
+        return nftIdCounter.current();
     }
 }

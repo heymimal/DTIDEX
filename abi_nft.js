@@ -280,6 +280,19 @@ export const nft_abi = [
 		"type": "function"
 	},
 	{
+		"inputs": [],
+		"name": "getLatestId",
+		"outputs": [
+			{
+				"internalType": "uint256",
+				"name": "",
+				"type": "uint256"
+			}
+		],
+		"stateMutability": "view",
+		"type": "function"
+	},
+	{
 		"inputs": [
 			{
 				"internalType": "address",

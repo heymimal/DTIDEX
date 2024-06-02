@@ -10,6 +10,15 @@
     body {
       padding-top: 75px; /* Adjust based on the height of your fixed navbar */
     }
+
+    .scrollable {
+      max-height: 300px; /* Set the maximum height as desired */
+      overflow-y: auto; /* Enable vertical scrolling */
+      border: 1px solid #ccc; /* Optional: add a border for better visualization */
+      padding: 10px; /* Optional: add padding */
+      background-color: #f8f9fa; /* Optional: add background color */
+    }
+
     .fixed-top-div {
       position: fixed;
       top: 70px; /* Adjust based on the height of your fixed navbar */
@@ -89,10 +98,10 @@
     <div id="navcol-1" class="collapse navbar-collapse">
       <ul class="navbar-nav me-auto">
           <li class="nav-item">
-              <a class="nav-link active" href="#" onclick = "changeType(DEX)">DEX</a>
+              <a  id = "dex-tab" class="nav-link active disabled" href="#" onclick = "changeType(DEX)">DEX</a>
           </li>
           <li class="nav-item">
-              <a class="nav-link" href="#" onclick = "changeType(NFT)">NFT</a>
+              <a id = "nft-tab" class="nav-link disabled" href="#" onclick = "changeType(NFT)">NFT</a>
           </li>
       </ul>
     </div>
@@ -169,6 +178,18 @@
         </form>
       </div>
     </div>
+    <div class="custom-divider"></div>
+    <div id="loans">
+      <div class="container mt-5">
+        <div class="row mb-4">
+          <div class="col-md-12">
+            <h4>Log:</h4>
+            <div id="loanEvents" class="list-group scrollable"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="custom-divider"></div>
     <div class="custom-divider"></div>
     <!-- ADD HERE THE CHECK LOAN AND INFORM WHEN A LOAN IS CREATED-->
   </div>
@@ -296,6 +317,17 @@
       </div>
       <div class="custom-divider"></div>
     </div>
+        <button type="button" class="btn btn-outline-success btn-block" onclick="getAvailableNfts()">Get NFT's available for Loans</button>
+        <div id="availableNfts"class="list-group scrollable"></div>
+      </form>
+      <div class="custom-divider"></div>
+        <button type="button" class="btn btn-outline-success btn-block" onclick="getTotalBorrowedAndNotPaidBackEth()">See Borrowed ETH that are not paid yet</button>
+        <div id="borrowedETH" class="list-group scrollable"></div>
+      </form>
+      </div>
+    </div>
+    <div class="custom-divider"></div>
+  </div>
   </div>
 
   <div id="NFT" style="display:none">

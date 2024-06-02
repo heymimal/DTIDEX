@@ -181,14 +181,21 @@ contract DecentralizedFinance is ERC20 {
     function makeLoanRequestByNft(IERC721 nftContract, uint256 nftId, uint256 loanAmount, uint256 deadline) external returns(uint256){ // for this to work, owner of the nft needs to approve the dex contract 
         // check if sender owns the nft
         require(nftContract.ownerOf(nftId) == msg.sender, "You do not own this NFT");
-
+        bool found;
+        for (uint256 i = 0; i <= loanIdCounter.current(); i++){
+            if(loans[i].nftId == nftId){ //can only cancel if there is no lender
+                found = true;
+             }
+        }
+        require(found == false, "A loan already exists with this nft!");
+        //verificar se já existe um loan para nftID
         //assuming maxDeadline is only related to the direct contracts
         //create loan
         Loan memory newLoan = Loan(address(0),msg.sender,deadline,loanAmount,true,address(nftContract),nftId);
         loanIdCounter.increment();
         uint256 loanID = loanIdCounter.current();
         loans[loanID] = newLoan;
-        emit loanCreated(loans[loanID].borrower, loanAmount, deadline);
+        //emit loanCreated(loans[loanID].borrower, loanAmount, deadline);
         return loanID;
     }
 
@@ -236,6 +243,7 @@ contract DecentralizedFinance is ERC20 {
                  //transfer DEX and Eth
                 _transfer(address(msg.sender), address(this), dex); //lender pays dex to contract ("locks")
                 payable(loans[i].borrower).transfer(loanAmount); //contract pay ether to loaner
+                emit loanCreated(loans[i].borrower, loanAmount, loans[i].deadline);
                 console.log(balance);
                 balance = balance - loanAmount;
                 console.log(balance);
@@ -248,12 +256,6 @@ contract DecentralizedFinance is ERC20 {
     
 
     function checkLoan(uint256 loanId) external {
-        /*
-        this function allows the owner of the contract to check the
-status of a loan. If the loan’s repayment deadline has passed without repayment, the
-function must take the necessary steps to punish the borrower (described in
-loanByNft function).
-        */
         //pre conditions
         require(msg.sender == owner, "You are not the contract owner"); 
         require(loans[loanId].borrower != address(0), "Loan does not exist");
@@ -279,7 +281,7 @@ loanByNft function).
     function getAvailableNFTs () public view returns (NftInfo[]memory){ //see the available NFTs to lend ETH to other users
         uint256 count = 0;
         for (uint256 i = 1;i <= loanIdCounter.current() ; i++) {
-            if(loans[i].isBasedNft){ // to filter out unavailable loans
+            if(loans[i].isBasedNft && loans[i].lender == address(0)){ // to filter out unavailable loans
                 //add nft to return
                 count++;
             }
