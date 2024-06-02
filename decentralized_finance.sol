@@ -129,13 +129,11 @@ contract DecentralizedFinance is ERC20 {
         } else {
             dex = msg.value/dexSwapRate;
         }
-
         if(loans[loanId].isBasedNft){ // if nft has to fully return
             require(debt <= msg.value,"For a NFT based loan, all value must be repaid");
             dex = (msg.value - debt/11) / dexSwapRate; // contract keeps 10%
             to = loans[loanId].lender; //send to lender (B)
             delete loans[loanId];
-            finished = true;
         } else {
             to = msg.sender; //send coins to user
             if (debt > msg.value){
