@@ -193,6 +193,7 @@ contract DecentralizedFinance is ERC20 {
         for (uint256 i = 0; i <= loanIdCounter.current(); i++){
             if(loans[i].nftId == nftId){ //can only cancel if there is no lender
                 found = true;
+                break;
              }
         }
         require(found == false, "A loan already exists with this nft!");
@@ -208,6 +209,7 @@ contract DecentralizedFinance is ERC20 {
     }
 
     function cancelLoanRequestByNft(IERC721 nftContract, uint256 nftId) external {
+        require(nftContract.ownerOf(nftId) == msg.sender, "You do not own this NFT");
         for (uint256 i = 0; i <= loanIdCounter.current(); i++){
             if(loans[i].isBasedNft && loans[i].nftContract == address(nftContract) && loans[i].lender == address(0)
             && loans[i].nftId == nftId){ //can only cancel if there is no lender

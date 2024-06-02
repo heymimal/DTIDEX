@@ -14,10 +14,10 @@ var web3 = new Web3(ethereum);
 var loanIds = [];
 var idIntervalMap = new Map();
 
-const defi_contractAddress = "0xBA6BFA9Bf1CF0c9F612f3342E19479411D201B6f";
+const defi_contractAddress = "0x45e9de9B7189e842360F640bF3A83118105b3900";
 const defi_contract = new web3.eth.Contract(defi_abi, defi_contractAddress);
 
-const nft_contractAddress = "0xd96B543c24e492804502A732F27E941A508E35CF";
+const nft_contractAddress = "0x5289dDdA87bE7c36381349e0130422D96542f0Ef";
 const nft_contract = new web3.eth.Contract(nft_abi, nft_contractAddress);
 
 const addressZero = "0x0000000000000000000000000000000000000000";
@@ -336,16 +336,15 @@ async function loanByNft() {
     const fromAddress = (await window.ethereum.request({
         method: "eth_accounts",
     }))[0];
-
+    console.log(price);
     if(price != 0){
         try {
             await defi_contract.methods.loanByNft(nft_contractAddress,nftId).send({
                 from: fromAddress,
-                value:price,
                 gas: gasLimit
             })
             refreshInterface();
-            window.alert("Loan with id ", id, " has been succesfuly started");
+            window.alert("Loan with id ", nftId, " has been succesfuly started");
         } catch (error) {
             console.error("error in loanbynft", error);
             window.alert("An error has occurred");
@@ -458,14 +457,12 @@ async function mintNft(){ // TO DO
     }))[0];
 
     try {
-        const nftId = await nft_contract.methods.mint().call({
+        await nft_contract.methods.mint().send({
             from: fromAddress,
             value: 100,
             gas: gasLimit
-        })
-        console.log("id created: ", nftId);
-        window.alert("nft created?");
-        return nftId; // do something with this!
+        });
+        window.alert("hello?");
     } catch (error) {
         console.error("error in mint!", error)
     }
