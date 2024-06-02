@@ -48,6 +48,7 @@ contract DecentralizedFinance is ERC20 {
         
         uint256 tokenAmount = msg.value/dexSwapRate;
         require(tokenAmount <= balanceOf(address(this)),"Not sufficient tokens for sale");
+        uint256 balanceBefore = balance;
         if(remaining != 0){ // returning extra
             payable(msg.sender).transfer(remaining);
             balance -= remaining;
@@ -56,6 +57,7 @@ contract DecentralizedFinance is ERC20 {
         _transfer(address(this), msg.sender,tokenAmount);
         balance += msg.value;
         //dexSwapRate +=1; //rules??
+        dexSwapRate += (dexSwapRate/10) * ((balance/100000) - (balanceBefore/100000));
     }
 
     function sellDex(uint256 dexAmount) external { // sell his/her DEX tokens
@@ -64,12 +66,13 @@ contract DecentralizedFinance is ERC20 {
         require(balanceOf(address(msg.sender)) >= dexAmount,"User does not have enough coins");
         uint256 ethToTrade = dexAmount * dexSwapRate;
         require(balance >= ethToTrade, "Contract does not have sufficient ETH");
-        
+        uint256 balanceBefore = balance;
         //transfer DEX and Eth
         balance = balance - ethToTrade;
         _transfer(msg.sender, address(this),dexAmount);
         payable(msg.sender).transfer(ethToTrade);
         //dexSwapRate -= 1; // rules??
+        dexSwapRate -= (dexSwapRate/10) * ((balanceBefore/100000) - (balance/100000));
     }
 
     function loan(uint256 dexAmount, uint256 deadline) external returns(uint256) { //ask for a loan
@@ -78,8 +81,11 @@ contract DecentralizedFinance is ERC20 {
         require(deadline <= maxLoanDuration, "Loan duration should not exceed the maximum loan duration");
         
         //maybe add checks to remaining dex if trade isn't linear
-        uint256 ethAmount = dexAmount*dexSwapRate;
+        uint256 weight = dexSwapRate/(2 * maxLoanDuration);
+        uint256 weightedSwapRate = (dexSwapRate + weight) - weight*deadline;
+        uint256 ethAmount = dexAmount* weightedSwapRate;
         require(ethAmount <= balance, "Not enough ETH in the contract");
+        uint256 balanceBefore = balance;
         // the longer the payback deadline, the lower the value of ETH per DEX, and
         // Add transfer method different - ler enunciado 
         uint256 deadlineInSeconds = deadline * 86400;
@@ -99,6 +105,7 @@ contract DecentralizedFinance is ERC20 {
         //emit event
         emit loanCreated(msg.sender, ethAmount, dl);
         //dexSwapRate = dexSwapRate + 1; // rules?
+        dexSwapRate += (dexSwapRate/10) * ((balanceBefore/100000) - (balance/100000));
         return loanID;
     }
 
@@ -106,13 +113,15 @@ contract DecentralizedFinance is ERC20 {
 
     function returnLoan(uint256 loanId) external payable {
         require(loans[loanId].borrower == msg.sender, "Id not valid or Loan's borrower does not match");
-        require(msg.value >= dexSwapRate && msg.value % dexSwapRate == 0, "Value needs to be higher and correct.");
+        // && msg.value % dexSwapRate == 0
+        require(msg.value >= dexSwapRate, "Value needs to be higher and correct.");
         
         uint256 returning = 0; // might remove
         uint256 dex = 0;
         uint256 debt = loans[loanId].amount; // money to return
         address to;
         bool finished;
+        uint256 balanceBefore = balance;
 
         if(debt <= msg.value){
             returning = msg.value - debt; //return money to user if extra was sent
@@ -120,13 +129,11 @@ contract DecentralizedFinance is ERC20 {
         } else {
             dex = msg.value/dexSwapRate;
         }
-
         if(loans[loanId].isBasedNft){ // if nft has to fully return
             require(debt <= msg.value,"For a NFT based loan, all value must be repaid");
             dex = (msg.value - debt/11) / dexSwapRate; // contract keeps 10%
             to = loans[loanId].lender; //send to lender (B)
             delete loans[loanId];
-            finished = true;
         } else {
             to = msg.sender; //send coins to user
             if (debt > msg.value){
@@ -149,6 +156,7 @@ contract DecentralizedFinance is ERC20 {
 
         if (finished) { //loan has been deleted
             //dexSwapRate = dexSwapRate - 1; //rules
+            dexSwapRate -= (dexSwapRate/10) * ((balance/100000) - (balanceBefore/100000));
         }
     
                      
