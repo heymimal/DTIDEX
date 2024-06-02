@@ -1,6 +1,7 @@
 import { defi_abi } from "./abi_decentralized_finance.js";
 import { nft_abi } from "./abi_nft.js";
 //if using metamask contracts:
+//comment from here
 if (typeof window.ethereum !== 'undefined') {
     console.log('MetaMask is installed!');
     var web3 = new Web3(window.ethereum);
@@ -9,7 +10,9 @@ if (typeof window.ethereum !== 'undefined') {
     console.log('MetaMask is not installed. Connecting to Ganache...');
     const ethereum = new Web3.providers.WebsocketProvider('ws://127.0.0.1:8545');
 }
+//to here
 // else
+//uncomment this line
 //const ethereum = new Web3.providers.WebsocketProvider('ws://127.0.0.1:8545');
 const gasLimit = 300000; // Adjust this value as needed
 //const web3 = new Web3();
