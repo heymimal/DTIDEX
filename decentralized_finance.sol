@@ -102,6 +102,8 @@ contract DecentralizedFinance is ERC20 {
         return loanID;
     }
 
+   
+
     function returnLoan(uint256 loanId) external payable {
         require(loans[loanId].borrower == msg.sender, "Id not valid or Loan's borrower does not match");
         require(msg.value >= dexSwapRate && msg.value % dexSwapRate == 0, "Value needs to be higher and correct.");
@@ -157,6 +159,10 @@ contract DecentralizedFinance is ERC20 {
        // "when called by the contract owner" but users are supposed to be able 
        // see the total amount of ETH the contract has
         return balance;
+    }
+
+    function getLoanId() public view returns (uint256) {
+        return loanIdCounter.current();
     }
 
     function setDexSwapRate(uint256 rate) external {

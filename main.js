@@ -8,14 +8,15 @@ import { nft_abi } from "./abi_nft.js";
     
 }*/
 const gasLimit = 300000; // Adjust this value as needed
-const ethereum = new Web3.providers.HttpProvider('http://127.0.0.1:8545');
+const ethereum = new Web3.providers.WebsocketProvider('ws://127.0.0.1:8545');
 //const web3 = new Web3();
 var web3 = new Web3(ethereum);
+var loanIds = [];
 
-const defi_contractAddress = "0xD98cbF11367124fa4ADa0AF27dE4103D54411298";
+const defi_contractAddress = "0x42459861c3CA136EC3648dE04c881A6C93d8A503";
 const defi_contract = new web3.eth.Contract(defi_abi, defi_contractAddress);
 
-const nft_contractAddress = "0x82dE58b0C558286A25446472B5be65eDD766d0c5";
+const nft_contractAddress = "0x8901f3BC321FDE4556843C6039dEbB62492762dC";
 const nft_contract = new web3.eth.Contract(nft_abi, nft_contractAddress);
 
 const addressZero = "0x0000000000000000000000000000000000000000";
@@ -32,10 +33,14 @@ async function connectMetaMask() {
             console.log("Contract owner:", owner);
             isOwner = (accounts[0].toLowerCase() ===  owner.toLowerCase());
             console.log(isOwner);
-            //setInterfaceBalance();
-            //setInterfaceDex();
-            //setInterfaceSwapRate();
+            setInterfaceBalance();
+            setInterfaceDex();
+            setInterfaceSwapRate();
             changeType(DEX);
+            if(isOwner){
+                await listenToLoanCreations();
+            }
+            
         } catch (error) {
             console.error("Error connecting to MetaMask:", error);
         }
@@ -129,6 +134,9 @@ async function loan() {
                 gas: gasLimit
             });
         document.getElementById("loanDexAmount").value = 0;
+        const id = await getLoanId();
+        console.log(id);
+        window.alert("Loan has been created with id: " + id);
         refreshInterface();
         return loanId; // maybe create popup saying loan with id has been created?
     } catch (error) {
@@ -165,6 +173,11 @@ async function getEthTotalBalance() {
 async function getRateEthToDex() {
     const rate = await defi_contract.methods.getDexSwapRate().call();
     return rate;
+}
+
+async function getLoanId(){
+    const id = await defi_contract.methods.getLoanId().call();
+    return id;
 }
 
 
@@ -213,6 +226,9 @@ async function makeLoanRequestByNft() {
                 from: fromAddress,
                 gas: gasLimit
             });
+
+        const id = await defi_contract.methods.loanIdCounter.call();
+        console.log("id is :" + id);
         document.getElementById("LoanNftId").value = '0';
         document.getElementById('loanAmountNft').value = '0'
         refreshInterface();
@@ -302,6 +318,30 @@ async function checkLoanStatus() {
 async function listenToLoanCreation() {
     // TODO: implement this
 }
+
+async function listenToLoanCreations() {
+	//const logBox = document.getElementById("logBox");
+     defi_contract.events.loanCreated()
+      .on('data', event => {
+        console.log(event.returnValues);
+        //logBox.value += event.returnValues;
+        addId();
+		})
+      .on('error', error => {
+        console.error('Error listening to loan creation:', error);
+      });
+	
+    console.log('Listening to loan creation events...');
+	
+   // intervalId = setInterval(checkLoanStatus(event.returnValues.id), 10 * 60 * 1000); 
+ 
+}
+
+async function addId(){
+    const x = await getLoanId();
+    loanIds.push(x);
+}
+
 
 async function mintNft(){ // TO DO
     const fromAddress = (await window.ethereum.request({
