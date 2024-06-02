@@ -1,30 +1,33 @@
 import { defi_abi } from "./abi_decentralized_finance.js";
 import { nft_abi } from "./abi_nft.js";
-/*if (typeof window.ethereum !== 'undefined') {
+//if using metamask contracts:
+if (typeof window.ethereum !== 'undefined') {
     console.log('MetaMask is installed!');
     var web3 = new Web3(window.ethereum);
+    const ethereum = window.ethereum;
 } else {
     console.log('MetaMask is not installed. Connecting to Ganache...');
-    
-}*/
+    const ethereum = new Web3.providers.WebsocketProvider('ws://127.0.0.1:8545');
+}
+// else
+//const ethereum = new Web3.providers.WebsocketProvider('ws://127.0.0.1:8545');
 const gasLimit = 300000; // Adjust this value as needed
-const ethereum = new Web3.providers.WebsocketProvider('ws://127.0.0.1:8545');
 //const web3 = new Web3();
 var web3 = new Web3(ethereum);
 var loanIds = [];
 var idIntervalMap = new Map();
 
-const defi_contractAddress = "0x45e9de9B7189e842360F640bF3A83118105b3900";
+const defi_contractAddress = "0x0ce42696DA2C536438fE3cC9C3985BD280BC883a";
 const defi_contract = new web3.eth.Contract(defi_abi, defi_contractAddress);
 
-const nft_contractAddress = "0x5289dDdA87bE7c36381349e0130422D96542f0Ef";
+const nft_contractAddress = "0x07b920A7F0D7D969faad517DA6c797af34C5Ad68";
 const nft_contract = new web3.eth.Contract(nft_abi, nft_contractAddress);
 
 const addressZero = "0x0000000000000000000000000000000000000000";
 var isOwner = false;
 async function connectMetaMask() {
    
-    if (ethereum) {
+    if (ethereum) { 
         try {
             const accounts = await window.ethereum.request({
                 method: "eth_requestAccounts",

@@ -1,4 +1,4 @@
-export const defi_abi =[
+export const defi_abi = [
 	{
 		"inputs": [],
 		"stateMutability": "nonpayable",
