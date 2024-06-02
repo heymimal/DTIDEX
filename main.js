@@ -14,10 +14,10 @@ var web3 = new Web3(ethereum);
 var loanIds = [];
 var idIntervalMap = new Map();
 
-const defi_contractAddress = "0xeacc79B5B62D2A8CA5fa133300bdeE7e551d88EA";
+const defi_contractAddress = "0xBA6BFA9Bf1CF0c9F612f3342E19479411D201B6f";
 const defi_contract = new web3.eth.Contract(defi_abi, defi_contractAddress);
 
-const nft_contractAddress = "0x1618DCCFF27f8609FEfb7b5E1D98fa3EceE821b3";
+const nft_contractAddress = "0xd96B543c24e492804502A732F27E941A508E35CF";
 const nft_contract = new web3.eth.Contract(nft_abi, nft_contractAddress);
 
 const addressZero = "0x0000000000000000000000000000000000000000";
@@ -463,11 +463,12 @@ async function mintNft(){ // TO DO
             value: 100,
             gas: gasLimit
         })
+        console.log("id created: ", nftId);
+        window.alert("nft created?");
         return nftId; // do something with this!
     } catch (error) {
         console.error("error in mint!", error)
     }
-    console.log("minting nft...");
 }
 
 //interface
